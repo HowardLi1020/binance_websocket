@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binance WebSocket 即時數據</title>
+</head>
+<body>
+    <h1>Binance 即時價格</h1>
+    <div id="price">等待 Binance 數據...</div>
+
+    <script>
+        const socket = new WebSocket('ws://127.0.0.1:8000/ws/binance/');
+
+        socket.onopen = function() {
+            console.log("WebSocket 已連接");
+        };
+
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            console.log("收到 Binance 數據: ", data);
+            document.getElementById('price').innerText = `BTC/USDT 當前價格：${data.price}`;
+        };
+
+        socket.onclose = function(event) {
+            console.log("WebSocket 已關閉");
+        };
+
+        socket.onerror = function(error) {
+            console.error("WebSocket 錯誤: ", error);
+        };
+    </script>
+</body>
+</html>
