@@ -3,14 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance WebSocket 即時數據</title>
+    <title>Binance 即時價格</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            margin-top: 50px;
+        }
+        .card {
+            margin-bottom: 15px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Binance 即時價格</h1>
-    <div id="price">等待 Binance 數據...</div>
+    <div class="container">
+        <h1 class="text-center mb-4">Binance 即時價格</h1>
+        <div class="mb-3">
+            <input type="text" id="searchInput" class="form-control" placeholder="搜尋幣種">
+        </div>
+        <div class="mb-3">
+            <select id="symbolSelect" class="form-select">
+                <option value="">選擇幣種</option>
+            </select>
+        </div>
+        <div id="price-container" class="row">
+            <!-- 動態價格卡片會插入在這裡 -->
+        </div>
+    </div>
 
     <script>
         const socket = new WebSocket('ws://127.0.0.1:8000/ws/binance/');
+        const symbolSelect = document.getElementById('symbolSelect');
+        const searchInput = document.getElementById('searchInput');
+        const priceContainer = document.getElementById('price-container');
+        let symbols = [];
 
         socket.onopen = function() {
             console.log("WebSocket 已連接");
@@ -19,7 +48,35 @@
         socket.onmessage = function(event) {
             const data = JSON.parse(event.data);
             console.log("收到 Binance 數據: ", data);
-            document.getElementById('price').innerText = `BTC/USDT 當前價格：${data.price}`;
+            // 更新下拉選單
+            if (!symbols.includes(data.symbol)) {
+                symbols.push(data.symbol);
+                const option = document.createElement('option');
+                option.value = data.symbol;
+                option.text = data.symbol;
+                symbolSelect.appendChild(option);
+            }
+            // 動態更新價格顯示
+            if (data.symbol.includes(searchInput.value.toUpperCase()) && 
+                (symbolSelect.value === "" || symbolSelect.value === data.symbol)) {
+                let symbolElement = document.getElementById(`price-${data.symbol}`);
+                if (symbolElement) {
+                    symbolElement.querySelector('.card-text').innerText = `當前價格：${data.price}`;
+                } else {
+                    const newElement = document.createElement('div');
+                    newElement.className = 'col-md-4';
+                    newElement.innerHTML = `
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">${data.symbol}</h5>
+                                <p class="card-text">當前價格：${data.price}</p>
+                            </div>
+                        </div>
+                    `;
+                    newElement.id = `price-${data.symbol}`;
+                    priceContainer.appendChild(newElement);
+                }
+            }
         };
 
         socket.onclose = function(event) {
@@ -29,6 +86,25 @@
         socket.onerror = function(error) {
             console.error("WebSocket 錯誤: ", error);
         };
+
+        // 搜尋和下拉選單變更事件
+        searchInput.addEventListener('input', () => filterSymbols());
+        symbolSelect.addEventListener('change', () => filterSymbols());
+
+        function filterSymbols() {
+            const searchValue = searchInput.value.toUpperCase();
+            const selectedSymbol = symbolSelect.value;
+            document.querySelectorAll('.card').forEach(card => {
+                const symbol = card.querySelector('.card-title').innerText;
+                if ((symbol.includes(searchValue)) && (selectedSymbol === "" || selectedSymbol === symbol)) {
+                    card.parentElement.style.display = "block";
+                } else {
+                    card.parentElement.style.display = "none";
+                }
+            });
+        }
     </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

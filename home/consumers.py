@@ -20,7 +20,7 @@ class BinanceConsumer(AsyncWebsocketConsumer):
         await self.send(text_data="服務器已收到您的消息：{}".format(text_data))
 
     async def start_binance_websocket(self):
-        uri = "wss://stream.binance.com:9443/ws/btcusdt@trade"
+        uri = "wss://stream.binance.com:9443/ws/!ticker@arr"  # 訂閱所有幣種的實時價格
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.ws_connect(uri) as websocket:
@@ -34,11 +34,14 @@ class BinanceConsumer(AsyncWebsocketConsumer):
     async def send_binance_message(self, message):
         try:
             data = json.loads(message)
-            price = data.get('p')
-            if price:
-                await self.send(text_data=json.dumps({
-                    'symbol': 'BTCUSDT',
-                    'price': price,
-                }))
+            for ticker in data:
+                symbol = ticker.get('s')  # 幣種符號
+                price = ticker.get('c')   # 當前價格
+                # 只保留 USDT 交易對
+                if symbol and price and symbol.endswith('USDT'):
+                    await self.send(text_data=json.dumps({
+                        'symbol': symbol,
+                        'price': price,
+                    }))
         except json.JSONDecodeError:
             print("無法解析 Binance WebSocket 消息")
